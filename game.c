@@ -28,8 +28,7 @@ static void sgx_keydata_init(sgx_keydata* ptr) {
     sgx_getkey(&keyrequest, ptr->aligned_ptr);
 }
 
-// Susceptible to a timing attack by a very clever hacker
-//
+// If rdrand can be controlled, then this might be vulnerable to a timing attack.
 static inline uint32_t psirand() {
     uint32_t x, y;
     __asm__ __volatile__ (".byte 0x0f, 0x31" : "=A" (x));
