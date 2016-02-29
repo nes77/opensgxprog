@@ -12,6 +12,7 @@ typedef struct _score_data {
 // Hackish way to get 128-byte aligned 128 byte region of memory without OS help.
 typedef struct { uint8_t data[256]; uint8_t* aligned_ptr; } sgx_keydata;
 
+// Aligns the pointer in the key struct, and initializes it with the EGETKEY instruction.
 static void sgx_keydata_init(sgx_keydata* ptr) {
     uint8_t* original_ptr;
     if (ptr == NULL) {
@@ -29,6 +30,8 @@ static void sgx_keydata_init(sgx_keydata* ptr) {
 }
 
 // If rdrand can be controlled, then this might be vulnerable to a timing attack.
+// It's unclear as to whether or not the libc rand() call is in userspace or the enclave
+// with opensgx.
 static inline uint32_t psirand() {
     uint32_t x, y;
     __asm__ __volatile__ (".byte 0x0f, 0x31" : "=A" (x));
@@ -165,6 +168,12 @@ void enclave_main() {
     const char* new_high_score = "New high score!";
     const char* error = "An error occurred...";
 
+    // Std library calls usually put their arguments in a section of memory that will be acessible to the OS
+    // This does that, calls AEX (asynchronous exit) targeting a preset section of code (the trampoline)
+    // which takes actions accordingly. Once the call is completed, ERESUME is called, and the enclave resumes
+    // execution.
+    //
+    // Enclave data/state is stored in an encrypted stack frame during this exit
     puts(prompt);   
 
     // Not golden random number generating, but I want something that is executed inside the enclave.
