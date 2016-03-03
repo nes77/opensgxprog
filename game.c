@@ -9,8 +9,9 @@ typedef struct _score_data {
     uint8_t padding[7];
 } score_data;
 
-// Hackish way to get 128-byte aligned 128 byte region of memory without OS help.
-typedef struct { uint8_t data[256]; uint8_t* aligned_ptr; } sgx_keydata;
+#define KEY_SIZE 16
+// Hackish way to get 128-bit aligned 128 byte region of memory without OS help.
+typedef struct { uint8_t data[KEY_SIZE]; uint8_t* aligned_ptr; } sgx_keydata __attribute__ ((aligned (16)));
 
 // Aligns the pointer in the key struct, and initializes it with the EGETKEY instruction.
 static void sgx_keydata_init(sgx_keydata* ptr) {
@@ -20,7 +21,7 @@ static void sgx_keydata_init(sgx_keydata* ptr) {
     }
 
     original_ptr = ptr->data;
-    original_ptr = (uint8_t*)((((uint64_t) ptr) & ~127) + 128);
+    //original_ptr = (uint8_t*)((((uint64_t) ptr) & ~127) + 128);
     ptr->aligned_ptr = original_ptr;
 
     keyrequest_t keyrequest;
@@ -29,7 +30,7 @@ static void sgx_keydata_init(sgx_keydata* ptr) {
     sgx_getkey(&keyrequest, ptr->aligned_ptr);
 }
 
-// If rdrand can be controlled, then this might be vulnerable to a timing attack.
+// If rdrand can be controlled, then this might be vulnerable to attack.
 // It's unclear as to whether or not the libc rand() call is in userspace or the enclave
 // with opensgx.
 static inline uint32_t psirand() {
@@ -103,7 +104,7 @@ static void encrypt_data(sgx_keydata* key, score_data* data, score_data* out) {
     key_part_ptr = (uint32_t*) key_ptr;
 
     for (i = 0, bounded_i = 0; i < sizeof(score_data)/sizeof(uint32_t);
-            i += 2, bounded_i = (bounded_i + 4) % (128/sizeof(uint32_t))) {
+            i += 2, bounded_i = (bounded_i + 4) % ((KEY_SIZE)/sizeof(uint32_t))) {
 
         for (v_index = 0; v_index < 2; v_index++) {
             v[v_index] = data_v_ptr[i + v_index];
@@ -135,7 +136,7 @@ static void decrypt_data(sgx_keydata* key, score_data* data, score_data* out) {
     key_part_ptr = (uint32_t*) key_ptr;
 
     for (i = 0, bounded_i = 0; i < sizeof(score_data)/sizeof(uint32_t);
-            i += 2, bounded_i = (bounded_i + 4) % (128/sizeof(uint32_t))) {
+            i += 2, bounded_i = (bounded_i + 4) % (KEY_SIZE/sizeof(uint32_t))) {
 
         for (v_index = 0; v_index < 2; v_index++) {
             v[v_index] = data_v_ptr[i + v_index];
