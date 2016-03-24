@@ -1,0 +1,56 @@
+Verification Server
+
+    Create secure tunnel with client enclave
+
+    Send nonce to client
+
+    Verify client enclave hash and nonce (how? SGX reference somewhat unclear...)
+
+    Receive nonce from client
+
+    Send server enclave hash to client
+
+    Compare client hash against local database of version hashes
+
+    Send client encryption key for its version, and all previous versions (so it can decrypt old versions)
+
+    Terminate session with client
+
+
+Client side
+
+    if encryption key database not available
+
+        Create secure tunnel with server enclave
+        
+        Receive nonce from server
+        
+        Send server report on enclave hash and nonce (need to figure out exactly how this is done)
+        
+        Send server a nonce
+        
+        Verify server hash and nonce (how?)
+        
+        Receive encryption keys for this version and previous versions
+        
+        use EGETKEY to get a sealing key
+        
+        Store an encrypted version of encryption key database secured with sealing key
+    
+    otherwise
+    
+        load encrypted key database and
+            (conjure image of security guard fumbling with keychain)
+            try every key until one works.
+            
+        if no keys work, assume score file needs to be replaced
+        
+        proceed as normally (like in current code)
+        
+        
+
+Why does the server need to prove its integrity?
+    Bad actor could set up own fake server and serve bad keys, causing the client enclave to encrypt data
+    using keys known to bad actor.
+    
+Waaaaay more complicated than offline data migration. Not sure what point of ISVSVN is if it can't be used to get previous key versions...
